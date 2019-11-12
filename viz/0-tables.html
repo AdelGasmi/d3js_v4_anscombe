@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style type="text/css" media="screen, print">
+        body {
+            margin: 30px 50px;
+            font-family: Georgia, serif;
+            scroll-behavior: auto;
+        }
+        
+        div {
+            float: left;
+            margin: 10px;
+        }
+        
+        table {
+            border: 1px solid grey;
+            width: 20em;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        th,
+        td {
+            border-bottom: 1px solid #ddd;
+        }
+        
+        td {
+            text-align: right;
+            padding: 0 0 0 10px;
+        }
+        
+        circle {
+            fill: #7a5195
+        }
+        
+        .background {
+            fill: #b1c3b3
+        }
+        
+        .line_reg {
+            stroke: #003f5c;
+            stroke-width: 4px;
+        }
+        
+        .chart_title {
+            text-anchor: middle;
+        }
+    </style>
+    </style>
+    <title>Anscombe's quartet with D3.Js - MoSIG IV - Gasmi Adel</title>
+</head>
+
+<body>
+    <h1>Anscombe's quartet</h1>
+
+    <div id="tables"></div>
+    <br>
+    <div id="graphs"></div>
+
+    <script src="../vendor/d3/d3.js"></script>
+    <!-- importing simple-statistics library to facilitate computations of the regression line-->
+    <script src="https://unpkg.com/simple-statistics@4.1.0/dist/simple-statistics.min.js"></script>
+
+    <script>
+        var body = d3.select("#tables");
+        var divs = {
+            '1': body.append('div'),
+            '2': body.append('div'),
+            '3': body.append('div'),
+            '4': body.append('div'),
+        };
+
+
+        var s = d3.formatSpecifier("f");
+        s.precision = d3.precisionFixed(0.1);
+        var f = d3.format(s);
+
+        //basic layout information
+        const width = 600;
+        const height = 300;
+        const margin = {
+            left: 50,
+            right: 20,
+            top: 50,
+            bottom: 20
+        }
+        const dot_size = 8;
+
+        const innerWidth = width - (margin.left + margin.right);
+        const innerHeight = height - (margin.top + margin.bottom);
+
+
+        d3.tsv("../data/anscombe.tsv", function(error, data) {
+
+            if (error) throw error;
+
+            for (k in divs) {
+                var div = divs[k];
+                var table = div.append('table');
+                table.append('caption')
+                    .text('dataset ' + k);
+
+                var header = table.append('tr');
+                header.append('th')
+                    .text('observation');
+                header.append('th')
+                    .text('x');
+                header.append('th')
+                    .text('y');
+
+                var row = table.selectAll('row')
+                    .data(data)
+                    .enter().filter(function(d) {
+                        return d.dataset == k;
+                    }).append('tr')
+
+                row.append('td')
+                    .text(function(d) {
+                        return d.observation;
+                    });
+
+                row.append('td')
+                    .text(function(d) {
+                        return d.x;
+                    });
+
+                row.append('td')
+                    .text(function(d) {
+                        return f(d.y);
+                    });
+            };
+
+            // parsing the floats x and y
+            data.forEach(function(d) {
+                d.x = +d.x;
+                d.y = +d.y;
+            });
+
+            // initializing the charts parameters
+            const x_min = d3.min(data, function(d) {
+                return d.x;
+            });
+            const y_min = d3.min(data, function(d) {
+                return d.x;
+            });;
+            const x_max = d3.max(data, function(d) {
+                return d.x;
+            });
+            const yMax = d3.max(data, function(d) {
+                return d.y;
+            });
+
+            // creating  x and y axes scales
+            const xScale = d3.scaleLinear()
+                .domain([0, x_max])
+                .range([0, innerWidth])
+                .nice();
+            const yScale = d3.scaleLinear()
+                .domain([0, yMax])
+                .range([innerHeight, 0])
+                .nice();
+
+            // creating the axes
+            const xAxis = d3.axisBottom()
+                .scale(xScale)
+                .ticks(20);
+            const yAxis = d3.axisLeft()
+                .scale(yScale)
+                .ticks(13)
+
+            //nest the data into different datasets
+            const nested = d3.nest()
+                .key(function(d) {
+                    return d.dataset;
+                })
+                .entries(data);
+
+            // create an SVG element for each plot
+            let plots = d3.select("#graphs").selectAll("svg")
+                .data(nested)
+                .enter()
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+            // background rect 
+            plots.append("rect")
+                .attr("x", margin.left)
+                .attr("y", margin.top)
+                .attr("width", innerWidth)
+                .attr("height", innerHeight)
+                .attr("class", "background");
+
+            //plot titles
+            plots.append("text")
+                .attr("class", "chart_title")
+                .attr("x", width / 2)
+                .attr("y", margin.top - 10)
+                .text(function(d, i) {
+                    return "dataset " + (i + 1)
+                })
+
+            //put x axis on each plot
+            plots.append("g")
+                .attr("transform", "translate(" + margin.left + "," + (height - margin.bottom) + ")")
+                .call(xAxis)
+
+            //put y axis on each plot
+            plots.append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.left + ")")
+                .call(yAxis)
+
+            // plot the data = circles with x and y coordinates
+            plots.append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+                .selectAll("circle")
+                .data(function(d) {
+                    return d.values
+                })
+                .enter()
+                .append("circle")
+                .attr("r", dot_size)
+                .attr("cx", function(d) {
+                    return xScale(d.x)
+                })
+                .attr("cy", function(d) {
+                    return yScale(d.y)
+                })
+
+            // plotting the line 
+            plots.each(function(d, i) {
+                // put x and y values in arrays
+                const x_values = d.values.map(function(e, j) {
+                    return e.x;
+                });
+                const y_values = d.values.map(function(e, j) {
+                    return e.y;
+                });
+
+                // put x and y in an array (pairs of coordinates) for simple-statistics functions
+                const pairs = [];
+                x_values.forEach(function(d, i) {
+                    pairs.push([x_values[i], y_values[i]])
+                })
+
+                // calculate slope and intercept 
+                const line_slope = ss.linearRegression(pairs);
+                // generate line from slope and intercept
+                const line_reg = ss.linearRegressionLine(line_slope);
+
+                //create initial line; we give it x1 = 0, and y1=line_reg(0) 
+                let line = d3.select(this).append("line")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+                    .attr("class", "line_reg")
+                    .attr("x1", xScale(0))
+                    .attr("y1", yScale(line_reg(0)))
+
+                // drawing the line
+                line.transition()
+                    .attr("x2", xScale(x_max))
+                    .attr("y2", yScale(line_reg(x_max)))
+            })
+        });
+    </script>
+</body>
+
+</html>
