@@ -20,8 +20,8 @@ Files
 .. _d3.js: http://d3js.org
 
 
-Files
------
+Run the project
+---------------
 
 You have to run a web server, even for local development. To do so, you can use -for example- python:
 
