@@ -20,9 +20,10 @@ Files
 .. _d3.js: http://d3js.org
 
 
-How to run it? 
+Files
+-----
 
 You have to run a web server, even for local development. To do so, you can use -for example- python:
 
-python3 -m http.server
-and then go to http://localhost:8000. You can also use node, see the d3.js documentation.
+- python3 -m http.server
+- and then go to http://localhost:8000. You can also use node, see the d3.js documentation.
